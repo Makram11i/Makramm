@@ -1,0 +1,1369 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>بطل العصا - Stick Hero CS Edition</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;800;900&display=swap');
+
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        body, html {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #0b0f19;
+            font-family: 'Cairo', sans-serif;
+            touch-action: none;
+            color: #fff;
+        }
+
+        #gameCanvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        .ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            z-index: 5;
+            padding: 15px;
+        }
+
+        /* Top HUD Bar */
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            pointer-events: auto;
+        }
+
+        .player-badge {
+            background: rgba(15, 23, 42, 0.65);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(0, 255, 204, 0.3);
+            padding: 8px 16px;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 4px 20px rgba(0,255,204,0.15);
+        }
+
+        .player-name-text {
+            font-weight: 800;
+            color: #00ffcc;
+            font-size: 1.05rem;
+            text-shadow: 0 0 10px rgba(0,255,204,0.5);
+        }
+
+        .hud-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .icon-btn {
+            background: rgba(15, 23, 42, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            color: white;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.2rem;
+            cursor: pointer;
+            backdrop-filter: blur(10px);
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
+
+        .icon-btn:hover {
+            transform: scale(1.1);
+            border-color: #00ffcc;
+            box-shadow: 0 0 15px rgba(0,255,204,0.4);
+        }
+
+        /* Score Display */
+        .score-center {
+            text-align: center;
+            pointer-events: none;
+            margin-top: 10px;
+        }
+
+        .score-box {
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(10px);
+            display: inline-block;
+            padding: 10px 35px;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 65, 108, 0.3);
+            box-shadow: 0 8px 30px rgba(255, 65, 108, 0.2);
+            transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .score-val {
+            font-size: 3.2rem;
+            font-weight: 900;
+            line-height: 1;
+            background: linear-gradient(135deg, #fff, #00ffcc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 20px rgba(0,255,204,0.3);
+        }
+
+        .high-score-val {
+            font-size: 0.85rem;
+            color: #ff416c;
+            font-weight: 700;
+            margin-top: 2px;
+        }
+
+        /* Comedy Floating Comments */
+        .comedy-toast {
+            position: absolute;
+            top: 30%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0.8);
+            background: rgba(10, 15, 30, 0.85);
+            border: 2px solid #00ffcc;
+            box-shadow: 0 0 30px rgba(0, 255, 204, 0.4);
+            color: #fff;
+            padding: 12px 28px;
+            border-radius: 30px;
+            font-size: 1.3rem;
+            font-weight: 800;
+            pointer-events: none;
+            opacity: 0;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            z-index: 8;
+            text-align: center;
+            white-space: nowrap;
+        }
+
+        .comedy-toast.show {
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1.1);
+        }
+
+        .comedy-toast.fail {
+            border-color: #ff416c;
+            box-shadow: 0 0 30px rgba(255, 65, 108, 0.5);
+            color: #ff4b2b;
+        }
+
+        .instruction {
+            text-align: center;
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 1.3rem;
+            font-weight: 700;
+            margin-bottom: 12%;
+            animation: pulse 2s infinite ease-in-out;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.8);
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.6; transform: scale(0.98); }
+            50% { opacity: 1; transform: scale(1.02); }
+        }
+
+        /* Modals & Glassmorphism Overlays */
+        .overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(7, 11, 21, 0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            pointer-events: auto;
+            z-index: 10;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+
+        .overlay.hidden {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+        }
+
+        .modal-card {
+            background: rgba(15, 23, 42, 0.75);
+            border: 1px solid rgba(0, 255, 204, 0.25);
+            padding: 35px 30px;
+            border-radius: 28px;
+            text-align: center;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), inset 0 0 20px rgba(0, 255, 204, 0.05);
+            max-width: 90%;
+            width: 460px;
+            transform: scale(1);
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .overlay.hidden .modal-card {
+            transform: scale(0.85);
+        }
+
+        .modal-title {
+            color: #fff;
+            font-size: 2.5rem;
+            font-weight: 900;
+            margin-bottom: 6px;
+            background: linear-gradient(135deg, #00ffcc, #ff416c);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .modal-sub {
+            color: #94a3b8;
+            font-size: 1.05rem;
+            margin-bottom: 25px;
+        }
+
+        .input-box {
+            width: 100%;
+            padding: 14px 18px;
+            font-size: 1.1rem;
+            background: rgba(2, 6, 23, 0.6);
+            border: 2px solid rgba(0, 255, 204, 0.2);
+            border-radius: 16px;
+            color: white;
+            font-family: inherit;
+            text-align: center;
+            outline: none;
+            margin-bottom: 12px;
+            transition: all 0.3s;
+        }
+
+        .input-box:focus {
+            border-color: #00ffcc;
+            box-shadow: 0 0 20px rgba(0, 255, 204, 0.3);
+        }
+
+        .btn-glow {
+            background: linear-gradient(135deg, #00ffcc, #00b3ff);
+            color: #030712;
+            border: none;
+            padding: 14px 28px;
+            font-size: 1.25rem;
+            font-weight: 900;
+            border-radius: 18px;
+            cursor: pointer;
+            box-shadow: 0 8px 25px rgba(0, 255, 204, 0.35);
+            transition: all 0.2s;
+            font-family: inherit;
+            width: 100%;
+            margin-bottom: 12px;
+        }
+
+        .btn-glow:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 30px rgba(0, 255, 204, 0.5);
+        }
+
+        .btn-glow:active {
+            transform: translateY(1px);
+        }
+
+        .btn-dark {
+            background: rgba(30, 41, 59, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #e2e8f0;
+            padding: 12px 24px;
+            font-size: 1.1rem;
+            font-weight: 700;
+            border-radius: 16px;
+            cursor: pointer;
+            font-family: inherit;
+            width: 100%;
+            transition: all 0.2s;
+        }
+
+        .btn-dark:hover {
+            background: rgba(51, 65, 85, 0.9);
+            color: #fff;
+        }
+
+        /* Leaderboard & Admin Players List */
+        .leaderboard-box {
+            list-style: none;
+            padding: 0;
+            margin: 15px 0 25px 0;
+            max-height: 240px;
+            overflow-y: auto;
+            text-align: right;
+            border-radius: 12px;
+            background: rgba(2, 6, 23, 0.4);
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .leaderboard-box::-webkit-scrollbar { width: 5px; }
+        .leaderboard-box::-webkit-scrollbar-thumb { background: #00ffcc; border-radius: 10px; }
+
+        .lb-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 14px;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            font-size: 1rem;
+        }
+
+        .lb-row.highlight {
+            background: rgba(0, 255, 204, 0.12);
+            border-right: 4px solid #00ffcc;
+        }
+
+        .lb-badge {
+            font-size: 1.2rem;
+            width: 32px;
+            text-align: center;
+            font-weight: 800;
+        }
+
+        .lb-player-name {
+            flex-grow: 1;
+            margin: 0 10px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            color: #f1f5f9;
+            font-weight: 600;
+        }
+
+        .lb-player-score {
+            font-weight: 900;
+            color: #00ffcc;
+            text-shadow: 0 0 10px rgba(0,255,204,0.3);
+        }
+
+        .admin-player-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 12px;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            font-size: 0.95rem;
+        }
+
+        .admin-action-btn {
+            background: #ff416c;
+            color: white;
+            border: none;
+            padding: 5px 12px;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.2s;
+        }
+
+        .admin-action-btn.unban {
+            background: #00ffcc;
+            color: #030712;
+        }
+
+        .error-msg {
+            color: #ff416c;
+            font-size: 0.9rem;
+            margin-bottom: 10px;
+            display: none;
+            font-weight: 700;
+        }
+    </style>
+</head>
+<body>
+
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- UI Overlay Layer -->
+    <div class="ui-layer">
+        <div class="top-bar">
+            <div class="player-badge">
+                <span>🚀</span>
+                <span class="player-name-text" id="hudPlayerName">لاعب جديد</span>
+            </div>
+            <div class="hud-buttons">
+                <button class="icon-btn" id="btnLeaderboard" title="لوحة الأوائل">🏆</button>
+                <button class="icon-btn" id="btnSettings" title="الإعدادات">⚙️</button>
+                <button class="icon-btn" id="btnOpenAdmin" title="لوحة الأدمن" style="background: rgba(255, 65, 108, 0.4); border-color: #ff416c;">🛡️</button>
+            </div>
+        </div>
+
+        <div class="score-center" id="scoreHUD">
+            <div class="score-box">
+                <div class="score-val" id="scoreVal">0</div>
+                <div class="high-score-val" id="highScoreVal">أفضل نتيجة: 0</div>
+            </div>
+        </div>
+
+        <div class="instruction" id="instruction">اضغط مطولاً لبناء الجسر 🌉</div>
+    </div>
+
+    <!-- Comedy Toast Popups -->
+    <div class="comedy-toast" id="comedyToast">Compiled Successfully! 🎉</div>
+
+    <!-- First Visit Name Modal -->
+    <div class="overlay" id="welcomeModal">
+        <div class="modal-card">
+            <div class="modal-title">نورتنيي</div>
+            <div class="modal-sub">اكتب اسم يلا</div>
+            
+            <input type="text" id="firstVisitNameInput" class="input-box" placeholder="اكتب اسمك هنا..." maxlength="15" autocomplete="off">
+            <div class="error-msg" id="firstVisitError">ياريت ندخل اسم صح (حرفين على الأقل)</div>
+
+            <button class="btn-glow" id="btnSaveFirstVisit">ابدا</button>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div class="overlay hidden" id="settingsModal">
+        <div class="modal-card">
+            <div class="modal-title" style="font-size: 2rem;">⚙️ الإعدادات</div>
+            <div class="modal-sub">لو عايز تغير الاسم</div>
+            
+            <input type="text" id="settingsNameInput" class="input-box" placeholder="الاسم الجديد..." maxlength="15" autocomplete="off">
+            <div class="error-msg" id="settingsError">يرجى إدخال اسم صحيح</div>
+
+            <button class="btn-glow" id="btnUpdateSettings">حفظ التعديلات 💾</button>
+            <button class="btn-dark" id="btnCloseSettings">إلغاء</button>
+        </div>
+    </div>
+
+    <!-- Game Over Modal -->
+    <div class="overlay hidden" id="gameOverModal">
+        <div class="modal-card">
+            <div class="modal-title" id="gameOverTitle" style="color: #ff416c;">هقهقهقهقهقهق🙈</div>
+            <div class="modal-sub" id="gameOverSub">لا جدع </div>
+
+            <div style="background: rgba(2, 6, 23, 0.5); padding: 15px; border-radius: 16px; margin-bottom: 20px; border: 1px solid rgba(255,255,255,0.08);">
+                <div style="color: #94a3b8; font-size: 0.95rem;">النتيجة النهائية</div>
+                <div style="font-size: 3.5rem; font-weight: 900; color: #00ffcc; text-shadow: 0 0 20px rgba(0,255,204,0.4);" id="finalScoreVal">0</div>
+                <div style="color: #ff416c; font-weight: 700; font-size: 0.9rem;" id="finalHighScoreVal">أعلى سكور: 0</div>
+            </div>
+
+            <button class="btn-glow" id="btnRestart">حاول تاني</button>
+            <button class="btn-dark" id="btnGameOverLb" style="margin-top: 5px;">🏆 قايمه الاوائل</button>
+        </div>
+    </div>
+
+    <!-- Leaderboard Modal -->
+    <div class="overlay hidden" id="leaderboardModal">
+        <div class="modal-card">
+            <div class="modal-title" style="font-size: 2.2rem;">🏆 قايمة الاوائل</div>
+            <div class="modal-sub">احسن لاعيبه</div>
+
+            <div class="leaderboard-box" id="lbContainer">
+                <div style="text-align: center; padding: 20px; color: #94a3b8;">جاري تحميل البيانات... ⏳</div>
+            </div>
+
+            <button class="btn-dark" id="btnCloseLb">إغلاق</button>
+        </div>
+    </div>
+
+    <!-- Password Prompt Modal for Admin -->
+    <div class="overlay hidden" id="adminPasswordModal" style="z-index: 15000;">
+        <div class="modal-card">
+            <div class="modal-title" style="font-size: 1.8rem;">🔒 كلمة مرور الأدمن</div>
+            <div class="modal-sub">أدخل كلمة المرور للوصول للوحة التحكم</div>
+            <input type="password" id="adminPassInput" class="input-box" placeholder="كلمة المرور..." autocomplete="off">
+            <div class="error-msg" id="adminPassError">اه يوسخ عايز تدخل هنا تعمل اي</div>
+            <button class="btn-glow" id="btnSubmitAdminPass">دخول</button>
+            <button class="btn-dark" id="btnCloseAdminPass">إلغاء</button>
+        </div>
+    </div>
+
+    <!-- In-Game Admin Panel Modal with Players Management -->
+    <div class="overlay hidden" id="adminPanelModal" style="z-index: 16000;">
+        <div class="modal-card" style="width: 520px;">
+            <div class="modal-title" style="font-size: 2rem;">🛡️ لوحة التحكم وإدارة اللاعبين</div>
+            <div class="modal-sub">إدارة اللعبة وحظر أو فك حظر اللاعبين</div>
+
+            <div style="text-align: right; margin-bottom: 15px;">
+                <label style="display: block; color: #00ffcc; font-weight: bold; margin-bottom: 6px;">حالة اللعبة العامة:</label>
+                <select id="adminGameStatus" class="input-box" style="margin-bottom: 10px;">
+                    <option value="open">🟢 اللعبة مفتوحة للجميع</option>
+                    <option value="closed">🔴 اللعبة مقفولة (صيانة / رسالة)</option>
+                </select>
+
+                <label style="display: block; color: #00ffcc; font-weight: bold; margin-bottom: 6px;">رسالة القفل أو الصيانة:</label>
+                <input type="text" id="adminGameMsg" class="input-box" placeholder="مثال: اللعبة متوقفة للصيانة حالياً..">
+            </div>
+
+            <div style="text-align: right; margin-bottom: 15px;">
+                <label style="display: block; color: #00ffcc; font-weight: bold; margin-bottom: 6px;">قائمة اللاعبين المسجلين (حظر / فك حظر):</label>
+                <div class="leaderboard-box" id="adminPlayersList" style="max-height: 150px;">
+                    <div style="text-align: center; padding: 15px; color: #94a3b8;">جاري تحميل اللاعبين...</div>
+                </div>
+            </div>
+
+            <button class="btn-glow" id="btnSaveAdminSettings">حفظ وتطبيق فوراً 💾</button>
+            <button class="btn-dark" id="btnCloseAdminPanel">إلغاء وإغلاق</button>
+        </div>
+    </div>
+
+    <!-- Global Lock / Ban Screen Modal -->
+    <div class="overlay hidden" id="globalLockModal" style="z-index: 9999; pointer-events: auto;">
+        <div class="modal-card" style="border-color: #ff416c; box-shadow: 0 0 50px rgba(255, 65, 108, 0.4);">
+            <div class="modal-title" style="color: #ff416c; font-size: 2.2rem;" id="lockModalTitle">⚠️ تنبيه مهم</div>
+            <div class="modal-sub" id="globalLockMessage" style="font-size: 1.3rem; color: #fff; margin-top: 15px; font-weight: bold;">
+                اللعبة مغلقة مؤقتاً للتحديثات.
+            </div>
+            <div style="font-size: 0.8rem; color: #94a3b8; margin-top: 10px;"> </div>
+        </div>
+    </div>
+
+    <!-- Firebase & Admin Code -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, onSnapshot, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'stick-hero-cs-app';
+        let firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+
+        let app, auth, db;
+        let currentUser = null;
+        let leaderboardData = [];
+        let isGameGloballyLocked = false;
+        let playerId = localStorage.getItem('sh_player_id');
+
+        try {
+            app = initializeApp(firebaseConfig);
+            auth = getAuth(app);
+            db = getFirestore(app);
+        } catch (e) {
+            console.error("Firebase Initialization Error:", e);
+        }
+
+        async function initAuth() {
+            if(!auth) return;
+            try {
+                if (typeof __initial_auth_token !== 'undefined') {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+                currentUser = auth.currentUser;
+                subscribeToLeaderboard();
+            } catch (e) {
+                console.error("Firebase Auth Error:", e);
+            }
+        }
+        initAuth();
+
+        function checkLocalAdminLock() {
+            const savedStatus = localStorage.getItem('sh_game_status') || 'open';
+            const savedMsg = localStorage.getItem('sh_game_msg') || 'اللعبة مغلقة مؤقتاً للصيانة.';
+            const lockModal = document.getElementById('globalLockModal');
+            const lockMsg = document.getElementById('globalLockMessage');
+            const lockTitle = document.getElementById('lockModalTitle');
+
+            // فحص هل اللاعب الحالي محظور أم لا
+            let bannedList = JSON.parse(localStorage.getItem('sh_banned_players') || '{}');
+            const isMeBanned = playerId && bannedList[playerId];
+
+            if (isMeBanned) {
+                isGameGloballyLocked = true;
+                lockTitle.innerText = "🚫 تم حظرك!";
+                lockMsg.innerHTML = `عذراً، لقد تم حظرك من قِبل البشمهندس.<br><span style="font-size: 0.8rem; color: #94a3b8; margin-top: 10px; display:inline-block;"></span>`;
+                lockModal.classList.remove('hidden');
+            } else if (savedStatus === 'closed') {
+                isGameGloballyLocked = true;
+                lockTitle.innerText = "⚠️ تنبيه مهم";
+                lockMsg.innerHTML = `${savedMsg}<br><span style="font-size: 0.8rem; color: #94a3b8; margin-top: 10px; display:inline-block;">انا رخم ومستفز مش عاجبك تعالا عاركني</span>`;
+                lockModal.classList.remove('hidden');
+            } else {
+                isGameGloballyLocked = false;
+                lockModal.classList.add('hidden');
+            }
+        }
+        checkLocalAdminLock();
+
+        const btnOpenAdmin = document.getElementById('btnOpenAdmin');
+        const adminPasswordModal = document.getElementById('adminPasswordModal');
+        const adminPassInput = document.getElementById('adminPassInput');
+        const adminPassError = document.getElementById('adminPassError');
+        const btnSubmitAdminPass = document.getElementById('btnSubmitAdminPass');
+        const btnCloseAdminPass = document.getElementById('btnCloseAdminPass');
+        
+        const adminPanelModal = document.getElementById('adminPanelModal');
+        const adminGameStatus = document.getElementById('adminGameStatus');
+        const adminGameMsg = document.getElementById('adminGameMsg');
+        const btnSaveAdminSettings = document.getElementById('btnSaveAdminSettings');
+        const btnCloseAdminPanel = document.getElementById('btnCloseAdminPanel');
+        const adminPlayersList = document.getElementById('adminPlayersList');
+
+        function openPasswordPrompt() {
+            adminPassInput.value = '';
+            adminPassError.style.display = 'none';
+            adminGameStatus.value = localStorage.getItem('sh_game_status') || 'open';
+            adminGameMsg.value = localStorage.getItem('sh_game_msg') || '';
+            renderAdminPlayersUI();
+            adminPasswordModal.classList.remove('hidden');
+        }
+
+        btnOpenAdmin.addEventListener('click', openPasswordPrompt);
+
+        let clickCount = 0;
+        let clickTimer = null;
+        window.addEventListener('click', (e) => {
+            if (e.target.closest('.overlay') && (e.target.closest('#adminPasswordModal') || e.target.closest('#adminPanelModal'))) return;
+            clickCount++;
+            if (clickCount === 1) {
+                clickTimer = setTimeout(() => { clickCount = 0; }, 1000);
+            } else if (clickCount === 6) {
+                clearTimeout(clickTimer);
+                clickCount = 0;
+                document.getElementById('globalLockModal').classList.add('hidden');
+                openPasswordPrompt();
+            }
+        });
+
+        btnCloseAdminPass.addEventListener('click', () => {
+            adminPasswordModal.classList.add('hidden');
+            checkLocalAdminLock();
+        });
+
+        btnSubmitAdminPass.addEventListener('click', () => {
+            const enteredPass = adminPassInput.value.trim();
+            if (enteredPass === '01114209242') {
+                adminPassError.style.display = 'none';
+                adminPasswordModal.classList.add('hidden');
+                adminPanelModal.classList.remove('hidden');
+                renderAdminPlayersUI();
+            } else {
+                adminPassError.style.display = 'block';
+            }
+        });
+
+        btnCloseAdminPanel.addEventListener('click', () => {
+            adminPanelModal.classList.add('hidden');
+            checkLocalAdminLock();
+        });
+
+        btnSaveAdminSettings.addEventListener('click', () => {
+            const status = adminGameStatus.value;
+            const message = adminGameMsg.value || 'اللعبة مغلقة مؤقتاً للتحديثات.';
+            
+            localStorage.setItem('sh_game_status', status);
+            localStorage.setItem('sh_game_msg', message);
+            
+            alert('تم حفظ إعدادات لوحة التحكم بنجاح! ✅');
+            adminPanelModal.classList.add('hidden');
+            checkLocalAdminLock();
+        });
+
+        function renderAdminPlayersUI() {
+            adminPlayersList.innerHTML = '';
+            if (leaderboardData.length === 0) {
+                adminPlayersList.innerHTML = '<div style="text-align: center; padding: 15px; color: #94a3b8;">لا يوجد لاعبين مسجلين بعد.</div>';
+                return;
+            }
+
+            let bannedList = JSON.parse(localStorage.getItem('sh_banned_players') || '{}');
+
+            leaderboardData.forEach(player => {
+                const isBanned = bannedList[player.playerId];
+                const row = document.createElement('div');
+                row.className = 'admin-player-row';
+                
+                row.innerHTML = `
+                    <span style="font-weight: bold; color: #f1f5f9; flex-grow: 1; text-align: right;">${escapeHTML(player.name)} <span style="color:#00ffcc; font-size:0.85rem;">(${player.score || 0})</span></span>
+                    <button class="admin-action-btn ${isBanned ? 'unban' : ''}" data-id="${player.playerId}">
+                        ${isBanned ? 'فك الحظر 🟢' : 'حظر 🔴'}
+                    </button>
+                `;
+
+                const btn = row.querySelector('button');
+                btn.addEventListener('click', () => {
+                    toggleBanPlayer(player.playerId);
+                });
+
+                adminPlayersList.appendChild(row);
+            });
+        }
+
+        function toggleBanPlayer(targetId) {
+            let bannedList = JSON.parse(localStorage.getItem('sh_banned_players') || '{}');
+            if (bannedList[targetId]) {
+                delete bannedList[targetId];
+            } else {
+                bannedList[targetId] = true;
+            }
+            localStorage.setItem('sh_banned_players', JSON.stringify(bannedList));
+            renderAdminPlayersUI();
+            checkLocalAdminLock();
+        }
+
+        function subscribeToLeaderboard() {
+            if (!currentUser) return;
+            const lbCollection = collection(db, 'artifacts', appId, 'public', 'data', 'scores');
+            
+            onSnapshot(lbCollection, (snapshot) => {
+                let items = [];
+                snapshot.forEach(d => items.push(d.data()));
+                
+                items.sort((a, b) => (b.score || 0) - (a.score || 0));
+                leaderboardData = items;
+                renderLeaderboardUI();
+                if (!document.getElementById('adminPanelModal').classList.contains('hidden')) {
+                    renderAdminPlayersUI();
+                }
+            }, (err) => {
+                console.error("Leaderboard subscription error:", err);
+            });
+        }
+
+        async function syncPlayerDataToFirebase(pId, pName, pScore) {
+            if (!currentUser || !pId) return;
+            try {
+                const playerDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'scores', pId);
+                await setDoc(playerDocRef, {
+                    playerId: pId,
+                    name: pName,
+                    score: pScore,
+                    updatedAt: Date.now()
+                }, { merge: true });
+            } catch (e) {
+                console.error("Error syncing player data:", e);
+            }
+        }
+
+        function renderLeaderboardUI() {
+            const container = document.getElementById('lbContainer');
+            container.innerHTML = '';
+
+            const top10 = leaderboardData.slice(0, 10);
+            if (top10.length === 0) {
+                container.innerHTML = '<div style="text-align: center; padding: 20px; color: #94a3b8;">لا توجد نتائج مسجلة بعد.</div>';
+                return;
+            }
+
+            const badges = ['🥇', '🥈', '🥉'];
+
+            top10.forEach((item, idx) => {
+                const row = document.createElement('div');
+                const isCurrentPlayer = item.playerId === playerId;
+                row.className = `lb-row ${isCurrentPlayer ? 'highlight' : ''}`;
+                
+                const badge = idx < 3 ? badges[idx] : `#${idx + 1}`;
+
+                row.innerHTML = `
+                    <span class="lb-badge">${badge}</span>
+                    <span class="lb-player-name">${escapeHTML(item.name || 'مجهول')}</span>
+                    <span class="lb-player-score">${item.score || 0}</span>
+                `;
+                container.appendChild(row);
+            });
+        }
+
+        function escapeHTML(str) {
+            return str.replace(/[&<>'"]/g, 
+                tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
+            );
+        }
+
+        async function checkNameTaken(newName) {
+            if (!currentUser) return false;
+            try {
+                const scoresRef = collection(db, 'artifacts', appId, 'public', 'data', 'scores');
+                const q = query(scoresRef, where('name', '==', newName));
+                const querySnapshot = await getDocs(q);
+                
+                let isTaken = false;
+                querySnapshot.forEach((doc) => {
+                    if (doc.data().playerId !== playerId) {
+                        isTaken = true;
+                    }
+                });
+                return isTaken;
+            } catch (e) {
+                return false;
+            }
+        }
+
+        let playerName = localStorage.getItem('sh_player_name') || '';
+        let playerHighScore = parseInt(localStorage.getItem('sh_high_score') || '0', 10);
+
+        const welcomeModal = document.getElementById('welcomeModal');
+        const settingsModal = document.getElementById('settingsModal');
+        const hudPlayerName = document.getElementById('hudPlayerName');
+        const highScoreVal = document.getElementById('highScoreVal');
+
+        function initPlayerIdentity() {
+            if (!playerId) {
+                playerId = 'user_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7);
+                localStorage.setItem('sh_player_id', playerId);
+                welcomeModal.classList.remove('hidden');
+            } else {
+                welcomeModal.classList.add('hidden');
+                updateHUDDisplay();
+            }
+            highScoreVal.innerText = `أفضل نتيجة: ${playerHighScore}`;
+        }
+
+        function updateHUDDisplay() {
+            hudPlayerName.innerText = playerName || 'لاعب جديد';
+        }
+
+        document.getElementById('btnSaveFirstVisit').addEventListener('click', async () => {
+            const val = document.getElementById('firstVisitNameInput').value.trim();
+            const err = document.getElementById('firstVisitError');
+            if (val.length < 2) {
+                err.innerText = " دخل اسم صح (حرفين على الأقل)";
+                err.style.display = 'block';
+                return;
+            }
+            
+            const isTaken = await checkNameTaken(val);
+            if (isTaken) {
+                err.innerText = "الاسم ده حد واخده قبلك.. اختار اسم تاني !";
+                err.style.display = 'block';
+                return;
+            }
+
+            err.style.display = 'none';
+            playerName = val;
+            localStorage.setItem('sh_player_name', playerName);
+            updateHUDDisplay();
+            welcomeModal.classList.add('hidden');
+
+            syncPlayerDataToFirebase(playerId, playerName, playerHighScore);
+        });
+
+        document.getElementById('btnSettings').addEventListener('click', () => {
+            document.getElementById('settingsNameInput').value = playerName;
+            settingsModal.classList.remove('hidden');
+        });
+
+        document.getElementById('btnCloseSettings').addEventListener('click', () => {
+            settingsModal.classList.add('hidden');
+        });
+
+        document.getElementById('btnUpdateSettings').addEventListener('click', async () => {
+            const val = document.getElementById('settingsNameInput').value.trim();
+            const err = document.getElementById('settingsError');
+            if (val.length < 2) {
+                err.innerText = "ياريت ندخل الاسم صح";
+                err.style.display = 'block';
+                return;
+            }
+
+            const isTaken = await checkNameTaken(val);
+            if (isTaken) {
+                err.innerText = "الاسم ده حد واخده قبلك.. اختار اسم تاني!";
+                err.style.display = 'block';
+                return;
+            }
+
+            err.style.display = 'none';
+            playerName = val;
+            localStorage.setItem('sh_player_name', playerName);
+            updateHUDDisplay();
+            settingsModal.classList.add('hidden');
+
+            syncPlayerDataToFirebase(playerId, playerName, playerHighScore);
+            showComedyToast(`تم تغيير الاسم لـ: ${playerName} ✍️`, false);
+        });
+
+        initPlayerIdentity();
+
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreVal = document.getElementById('scoreVal');
+        const comedyToast = document.getElementById('comedyToast');
+
+        const successQuotes = [
+            "Compiled Successfully! 🎉", "عاااااشش ", "لعييييب", "عااااش يبطل", "ايييي الحلاوهه ديي", "لا انت كدا تاخد قلبيييي وانا مرتااح", "مكانكك مش هنااا صدقنيي"
+        ];
+
+        const failQuotes = [
+            "هقهقهققهقهق🙈", "جدعع مانتت لو تركز", "وعاميلي فيها لعيب", "ههققهقهقهقهقق وقعت🙈", "ركز ركز ", "تستاهل التصفيق لاكن علي وشك"
+        ];
+
+        function showComedyToast(msg, isFail = false) {
+            comedyToast.innerText = msg;
+            comedyToast.className = `comedy-toast show ${isFail ? 'fail' : ''}`;
+            setTimeout(() => {
+                comedyToast.classList.remove('show');
+            }, 1800);
+        }
+
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        function playSound(type) {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            const now = audioCtx.currentTime;
+
+            if (type === 'grow') {
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(150, now);
+                osc.frequency.linearRampToValueAtTime(450, now + 0.1);
+                gain.gain.setValueAtTime(0.08, now);
+                gain.gain.linearRampToValueAtTime(0.01, now + 0.1);
+                osc.start(now); osc.stop(now + 0.1);
+            } else if (type === 'fall') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(300, now);
+                osc.frequency.exponentialRampToValueAtTime(80, now + 0.25);
+                gain.gain.setValueAtTime(0.12, now);
+                gain.gain.linearRampToValueAtTime(0.01, now + 0.25);
+                osc.start(now); osc.stop(now + 0.25);
+            } else if (type === 'score') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(523.25, now);
+                osc.frequency.setValueAtTime(659.25, now + 0.08);
+                gain.gain.setValueAtTime(0.12, now);
+                gain.gain.linearRampToValueAtTime(0.01, now + 0.2);
+                osc.start(now); osc.stop(now + 0.2);
+            } else if (type === 'perfect') {
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(440, now);
+                osc.frequency.setValueAtTime(880, now + 0.1);
+                gain.gain.setValueAtTime(0.15, now);
+                gain.gain.linearRampToValueAtTime(0.01, now + 0.3);
+                osc.start(now); osc.stop(now + 0.3);
+            } else if (type === 'fail') {
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(180, now);
+                osc.frequency.linearRampToValueAtTime(40, now + 0.35);
+                gain.gain.setValueAtTime(0.2, now);
+                gain.gain.linearRampToValueAtTime(0.01, now + 0.35);
+                osc.start(now); osc.stop(now + 0.35);
+            }
+        }
+
+        const config = {
+            pillarHeightRatio: 0.38,
+            heroSize: 22,
+            stickWidth: 5,
+            growSpeed: 3.5,
+            fallSpeed: 0.05,
+            walkSpeed: 3,
+            gravity: 0.65,
+            accentColor: '#00ffcc',
+            secondaryColor: '#ff416c'
+        };
+
+        let state = 'WAITING';
+        let score = 0;
+        let pillars = [];
+        let stick = { length: 0, rotation: 0, x: 0, y: 0 };
+        let hero = { x: 0, y: 0, vy: 0 };
+        let cameraX = 0;
+        let targetCameraX = 0;
+        let particles = [];
+        let stars = [];
+        let width, height;
+        let isPerfect = false;
+
+        function resize() {
+            width = window.innerWidth;
+            height = window.innerHeight;
+            canvas.width = width * window.devicePixelRatio;
+            canvas.height = height * window.devicePixelRatio;
+            ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+            generateStars();
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        function generateStars() {
+            stars = [];
+            for (let i = 0; i < 90; i++) {
+                stars.push({
+                    x: Math.random() * width,
+                    y: Math.random() * (height * 0.65),
+                    size: Math.random() * 1.8 + 0.5,
+                    alpha: Math.random(),
+                    speed: Math.random() * 0.02 + 0.005
+                });
+            }
+        }
+
+        function createParticles(x, y, count = 25, color = config.accentColor) {
+            for (let i = 0; i < count; i++) {
+                particles.push({
+                    x, y,
+                    vx: (Math.random() - 0.5) * 9,
+                    vy: (Math.random() - 1) * 9,
+                    life: 1,
+                    size: Math.random() * 4 + 2,
+                    color
+                });
+            }
+        }
+
+        function updateParticles() {
+            for (let i = particles.length - 1; i >= 0; i--) {
+                let p = particles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                p.vy += 0.25;
+                p.life -= 0.035;
+                if (p.life <= 0) particles.splice(i, 1);
+            }
+        }
+
+        function drawParticles() {
+            particles.forEach(p => {
+                ctx.globalAlpha = Math.max(0, p.life);
+                ctx.fillStyle = p.color;
+                ctx.shadowBlur = 8;
+                ctx.shadowColor = p.color;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                ctx.fill();
+            });
+            ctx.globalAlpha = 1;
+            ctx.shadowBlur = 0;
+        }
+
+        function initGame() {
+            score = 0;
+            cameraX = 0;
+            targetCameraX = 0;
+            particles = [];
+            scoreVal.innerText = '0';
+
+            pillars = [];
+            pillars.push({ x: 50, w: 90 });
+            generateNextPillar();
+
+            resetHero();
+            resetStick();
+
+            state = 'WAITING';
+            document.getElementById('instruction').style.opacity = '1';
+            document.getElementById('gameOverModal').classList.add('hidden');
+        }
+
+        function generateNextPillar() {
+            let last = pillars[pillars.length - 1];
+            let minGap = 45;
+            let maxGap = Math.min(width - 160, 380);
+            let gap = Math.random() * (maxGap - minGap) + minGap;
+            let w = Math.random() * 55 + 30;
+
+            if (score === 0) gap = Math.min(gap, 140);
+
+            pillars.push({
+                x: last.x + last.w + gap,
+                w: w
+            });
+        }
+
+        function resetHero() {
+            let current = pillars[0];
+            hero.x = current.x + current.w - config.heroSize - 8;
+            hero.y = height - (height * config.pillarHeightRatio) - config.heroSize;
+            hero.vy = 0;
+        }
+
+        function resetStick() {
+            let current = pillars[0];
+            stick.length = 0;
+            stick.rotation = 0;
+            stick.x = current.x + current.w;
+            stick.y = height - (height * config.pillarHeightRatio);
+        }
+
+        function handlePressStart(e) {
+            if (isGameGloballyLocked) return;
+            if (e.target.closest('.overlay') || e.target.closest('.icon-btn')) return;
+            if (e.cancelable) e.preventDefault();
+
+            if (state === 'WAITING') {
+                state = 'GROWING';
+                document.getElementById('instruction').style.opacity = '0';
+            }
+        }
+
+        function handlePressEnd(e) {
+            if (isGameGloballyLocked) return;
+            if (e.target.closest('.overlay') || e.target.closest('.icon-btn')) return;
+            if (e.cancelable) e.preventDefault();
+
+            if (state === 'GROWING') {
+                state = 'FALLING';
+                playSound('fall');
+            }
+        }
+
+        window.addEventListener('mousedown', handlePressStart);
+        window.addEventListener('touchstart', handlePressStart, { passive: false });
+        window.addEventListener('mouseup', handlePressEnd);
+        window.addEventListener('touchend', handlePressEnd, { passive: false });
+
+        function update() {
+            if (isGameGloballyLocked) return;
+
+            stars.forEach(s => {
+                s.alpha += s.speed;
+                if (s.alpha > 1 || s.alpha < 0.2) s.speed *= -1;
+            });
+
+            updateParticles();
+
+            if (state === 'GROWING') {
+                stick.length += config.growSpeed;
+                if (Math.random() < 0.3) playSound('grow');
+            } 
+            else if (state === 'FALLING') {
+                stick.rotation += config.fallSpeed;
+                if (stick.rotation >= Math.PI / 2) {
+                    stick.rotation = Math.PI / 2;
+                    state = 'WALKING';
+
+                    let stickEndX = stick.x + stick.length;
+                    let target = pillars[1];
+                    let targetCenter = target.x + target.w / 2;
+                    
+                    let success = (stickEndX >= target.x && stickEndX <= target.x + target.w);
+                    isPerfect = success && Math.abs(stickEndX - targetCenter) <= 6;
+                }
+            } 
+            else if (state === 'WALKING') {
+                hero.x += config.walkSpeed;
+                let target = pillars[1];
+                let stickEndX = stick.x + stick.length;
+                let success = (stickEndX >= target.x && stickEndX <= target.x + target.w);
+                let destinationX = success ? (target.x + target.w - config.heroSize - 8) : stickEndX;
+
+                if (hero.x >= destinationX) {
+                    hero.x = destinationX;
+
+                    if (success) {
+                        let pts = isPerfect ? 2 : 1;
+                        score += pts;
+                        scoreVal.innerText = score;
+
+                        if (isPerfect) {
+                            playSound('perfect');
+                            createParticles(stickEndX, stick.y, 40, '#ff0055');
+                            showComedyToast("PERFECT LANDING! +2 🎯", false);
+                        } else {
+                            playSound('score');
+                            createParticles(hero.x + config.heroSize / 2, hero.y + config.heroSize, 18, '#00ffcc');
+                            
+                            if (Math.random() < 0.45) {
+                                const q = successQuotes[Math.floor(Math.random() * successQuotes.length)];
+                                showComedyToast(q, false);
+                            }
+                        }
+
+                        if (score > playerHighScore) {
+                            playerHighScore = score;
+                            localStorage.setItem('sh_high_score', playerHighScore);
+                            highScoreVal.innerText = `أفضل نتيجة: ${playerHighScore}`;
+                            syncPlayerDataToFirebase(playerId, playerName, playerHighScore);
+                        }
+
+                        state = 'TRANSITION';
+                        targetCameraX = target.x - 50;
+                        generateNextPillar();
+                    } else {
+                        state = 'GAMEOVER_FALL';
+                        playSound('fail');
+                        const q = failQuotes[Math.floor(Math.random() * failQuotes.length)];
+                        showComedyToast(q, true);
+                    }
+                }
+            } 
+            else if (state === 'GAMEOVER_FALL') {
+                hero.vy += config.gravity;
+                hero.y += hero.vy;
+                stick.rotation += 0.04;
+
+                if (hero.y > height + 50) {
+                    triggerGameOver();
+                    state = 'GAMEOVER_IDLE';
+                }
+            } 
+            else if (state === 'TRANSITION') {
+                let diff = targetCameraX - cameraX;
+                let scrollSpeed = 5;
+                
+                if (diff > scrollSpeed) {
+                    cameraX += scrollSpeed;
+                } else {
+                    let shift = targetCameraX;
+                    cameraX = 0;
+                    targetCameraX = 0;
+
+                    pillars.forEach(p => p.x -= shift);
+                    hero.x -= shift;
+                    stick.x -= shift;
+
+                    pillars.shift();
+                    resetStick();
+
+                    state = 'WAITING';
+                    document.getElementById('instruction').style.opacity = '1';
+                }
+            }
+        }
+
+        function triggerGameOver() {
+            document.getElementById('finalScoreVal').innerText = score;
+            document.getElementById('finalHighScoreVal').innerText = `أعلى سكور: ${playerHighScore}`;
+            
+            const randomFailQuote = failQuotes[Math.floor(Math.random() * failQuotes.length)];
+            document.getElementById('gameOverTitle').innerText = randomFailQuote;
+
+            if (score > 0) {
+                syncPlayerDataToFirebase(playerId, playerName, playerHighScore);
+            }
+
+            document.getElementById('gameOverModal').classList.remove('hidden');
+        }
+
+        function draw() {
+            let bgGrad = ctx.createLinearGradient(0, 0, 0, height);
+            bgGrad.addColorStop(0, '#070b15');
+            bgGrad.addColorStop(1, '#0f172a');
+            ctx.fillStyle = bgGrad;
+            ctx.fillRect(0, 0, width, height);
+
+            ctx.fillStyle = '#fff';
+            stars.forEach(s => {
+                ctx.globalAlpha = Math.max(0, Math.min(1, s.alpha));
+                ctx.beginPath();
+                ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
+                ctx.fill();
+            });
+            ctx.globalAlpha = 1;
+
+            ctx.fillStyle = 'rgba(0, 255, 204, 0.06)';
+            ctx.beginPath(); ctx.arc(width * 0.8, height * 0.22, 90, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = 'rgba(0, 255, 204, 0.12)';
+            ctx.beginPath(); ctx.arc(width * 0.8, height * 0.22, 60, 0, Math.PI * 2); ctx.fill();
+
+            ctx.save();
+            ctx.translate(-cameraX, 0);
+
+            let pHeight = height * config.pillarHeightRatio;
+            let pY = height - pHeight;
+
+            pillars.forEach((p, idx) => {
+                let pGrad = ctx.createLinearGradient(p.x, pY, p.x, height);
+                pGrad.addColorStop(0, '#1e293b');
+                pGrad.addColorStop(1, '#020617');
+                ctx.fillStyle = pGrad;
+
+                ctx.beginPath();
+                ctx.roundRect(p.x, pY, p.w, pHeight, [10, 10, 0, 0]);
+                ctx.fill();
+
+                ctx.fillStyle = config.accentColor;
+                ctx.fillRect(p.x, pY, p.w, 4);
+
+                if (idx !== 0) {
+                    ctx.fillStyle = '#ff416c';
+                    ctx.fillRect(p.x + p.w / 2 - 4, pY, 8, 4);
+                }
+            });
+
+            if (stick.length > 0) {
+                ctx.save();
+                ctx.translate(stick.x, stick.y);
+                ctx.rotate(stick.rotation);
+
+                ctx.fillStyle = '#f8fafc';
+                ctx.shadowBlur = 12;
+                ctx.shadowColor = '#00ffcc';
+
+                ctx.beginPath();
+                ctx.roundRect(0, -stick.length, config.stickWidth, stick.length, 3);
+                ctx.fill();
+
+                ctx.shadowBlur = 0;
+                ctx.restore();
+            }
+
+            let hX = hero.x;
+            let hY = hero.y;
+            let hs = config.heroSize;
+
+            ctx.fillStyle = '#f1f5f9';
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = '#00ffcc';
+            ctx.beginPath();
+            ctx.roundRect(hX, hY, hs, hs, 6);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+
+            ctx.fillStyle = config.secondaryColor;
+            ctx.fillRect(hX, hY + 4, hs, 7);
+
+            if (state === 'WALKING' || state === 'FALLING') {
+                let flap = Math.sin(Date.now() / 40) * 5;
+                ctx.fillStyle = config.secondaryColor;
+                ctx.beginPath();
+                ctx.moveTo(hX, hY + 5);
+                ctx.lineTo(hX - 12, hY + 8 + flap);
+                ctx.lineTo(hX, hY + 11);
+                ctx.fill();
+            }
+
+            ctx.fillStyle = '#0f172a';
+            ctx.beginPath(); ctx.arc(hX + 13, hY + 7, 2, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(hX + 19, hY + 7, 2, 0, Math.PI * 2); ctx.fill();
+
+            drawParticles();
+
+            ctx.restore();
+        }
+
+        function gameLoop() {
+            update();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        document.getElementById('btnRestart').addEventListener('click', () => {
+            initGame();
+        });
+
+        document.getElementById('btnLeaderboard').addEventListener('click', () => {
+            document.getElementById('leaderboardModal').classList.remove('hidden');
+        });
+
+        document.getElementById('btnGameOverLb').addEventListener('click', () => {
+            document.getElementById('leaderboardModal').classList.remove('hidden');
+        });
+
+        document.getElementById('btnCloseLb').addEventListener('click', () => {
+            document.getElementById('leaderboardModal').classList.add('hidden');
+        });
+
+        initGame();
+        requestAnimationFrame(gameLoop);
+
+    </script>
+</body>
+</html>
